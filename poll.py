@@ -7,6 +7,8 @@ import requests
 import time
 import os
 import json
+import random
+import secrets
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -45,34 +47,30 @@ def load_config(path: str = "config.json") -> Dict:
 
 class AmulProductMonitor:
     def __init__(
-        self,
-        telegram_bot_token: str,
-        telegram_chat_id: str,
-        product_id: str,
-        api_config: Optional[Dict],
-        check_interval_minutes: int = 2,
+        self, telegram_bot_token: str, telegram_chat_id: str, api_config: Optional[Dict]
     ):
         # product id may be provided directly or via api_config
-        self.product_id = (
-            api_config.get("product_id")
-            if api_config and api_config.get("product_id")
-            else product_id
-        )
-        self.api_url = (
-            api_config.get("api_url")
-            if api_config and api_config.get("api_url")
-            else "https://shop.amul.com/api/1/entity/ms.products"
-        )
-        self.check_interval = check_interval_minutes * 60
+        self.product_id = api_config.get("product_id")
+        self.api_url = api_config.get("api_url")
+        self.check_interval = api_config.get("check_interval_minutes", int) * 60
         self.was_out_of_stock = True
 
         # Telegram config
         self.telegram_bot_token = telegram_bot_token
         self.telegram_chat_id = telegram_chat_id
 
-        # Use provided headers/cookies/params if present; don't inject defaults
+        # Use provided headers/params if present; load cookies from env first
         self.headers = api_config.get("headers", {}) if api_config else {}
-        self.cookies = api_config.get("cookies", {}) if api_config else {}
+
+        # Prefer cookies from COOKIES_JSON env var (secure storage); fallback to config
+        cookies_from_env = os.getenv("COOKIES_JSON")
+        if cookies_from_env:
+            try:
+                parsed = json.loads(cookies_from_env)
+                self.cookies = parsed if isinstance(parsed, dict) else {}
+            except Exception as e:
+                print(f"Cookie error: {e}")
+
         # If params provided, ensure product id is updated only when the filter exists
         self.params = api_config.get("params", {}) if api_config else {}
         try:
@@ -88,11 +86,14 @@ class AmulProductMonitor:
 
     def fetch_product(self) -> Optional[Dict]:
         """Fetch the specific product data"""
+
         try:
             timestamp = int(time.time() * 1000)
-            self.session.headers["tid"] = (
-                f"{timestamp}:691:6d9a6838050b5142d86aa85f79a5a8c3b0e5014a9dd37771f9a2bfbb56a7c9e5"
-            )
+
+            # dynamic middle number and 64-hex suffix to resemble site tid format
+            mid = random.randint(1, 999)
+            suffix = secrets.token_hex(32)  # 64 hex chars
+            self.session.headers["tid"] = f"{timestamp}:{mid}:{suffix}"
 
             response = self.session.get(self.api_url, params=self.params, timeout=30)
             response.raise_for_status()
@@ -107,6 +108,7 @@ class AmulProductMonitor:
 
     def check_stock(self, product: Dict) -> bool:
         """Check if product is in stock"""
+
         if not product:
             return False
         return (
@@ -116,6 +118,7 @@ class AmulProductMonitor:
 
     def send_telegram_notification(self, product: Dict):
         """Send Telegram notification"""
+
         try:
             message = (
                 f"🎉 *BACK IN STOCK*\n\n"
@@ -150,7 +153,8 @@ class AmulProductMonitor:
 
     def run(self):
         """Main monitoring loop"""
-        print(f"Monitor started - Checking every {self.check_interval // 60} minutes")
+
+        print(f"Monitor started - Checking every {self.check_interval / 60} minutes")
 
         # Initial check
         product = self.fetch_product()
@@ -198,6 +202,7 @@ class AmulProductMonitor:
 
 if __name__ == "__main__":
     # Load environment and config
+
     load_dotenv()
     config = load_config()
 
@@ -208,15 +213,11 @@ if __name__ == "__main__":
         print("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment (.env)")
         raise SystemExit(1)
 
-    PRODUCT_ID = config.get("product_id", "676d4b585a4549003e2ee4e9")
-
     api_config = config
 
     monitor = AmulProductMonitor(
         TELEGRAM_BOT_TOKEN,
         TELEGRAM_CHAT_ID,
-        PRODUCT_ID,
         api_config,
-        check_interval_minutes=api_config.get("check_interval_minutes", 2),
     )
     monitor.run()
