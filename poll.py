@@ -9,6 +9,7 @@ import os
 import json
 import random
 import secrets
+import argparse
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -181,7 +182,7 @@ class AmulProductMonitor:
                             f"{datetime.now().strftime('%H:%M:%S')} - 🎉 BACK IN STOCK!"
                         )
                         self.send_telegram_notification(product)
-                        self.was_out_of_stock = False
+                        return
                     elif not is_in_stock:
                         self.was_out_of_stock = True
                         print(f"{datetime.now().strftime('%H:%M:%S')} - Out of stock")
@@ -215,9 +216,20 @@ if __name__ == "__main__":
 
     api_config = config
 
-    monitor = AmulProductMonitor(
-        TELEGRAM_BOT_TOKEN,
-        TELEGRAM_CHAT_ID,
-        api_config,
-    )
-    monitor.run()
+    monitor = AmulProductMonitor(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, api_config)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--once", action="store_true", help="Run one check and exit")
+    args = parser.parse_args()
+
+    if args.once:
+        product = monitor.fetch_product()
+        if product and monitor.check_stock(product):
+            print(
+                f"{datetime.now().isoformat()} - BACK IN STOCK -> sending notification"
+            )
+            monitor.send_telegram_notification(product)
+        else:
+            print(f"{datetime.now().isoformat()} - Not in stock")
+    else:
+        monitor.run()
