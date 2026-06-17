@@ -3,32 +3,27 @@
   "api_url": "https://shop.amul.com/api/1/entity/ms.products",
   "check_interval_minutes": 2,
   "headers": {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0",
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "en-US,en;q=0.9",
-    "Referer": "https://shop.amul.com/",
+    "Referer": "https://shop.amul.com/en/browse/protein",
     "base_url": "https://shop.amul.com/en/browse/protein",
-    "frontend": "1",
-    "Sec-GPC": "1",
-    "Connection": "keep-alive",
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "same-origin",
-    "Pragma": "no-cache",
-    "Cache-Control": "no-cache"
+    "frontend": "1"
   },
 
   "params": {
+    "fields[_id]": "1",
     "fields[name]": "1",
     "fields[alias]": "1",
     "fields[price]": "1",
     "fields[available]": "1",
     "fields[inventory_quantity]": "1",
-    "filters[0][field]": "_id",
-    "filters[0][value][0]": "676d4b585a4549003e2ee4e9",
+    "filters[0][field]": "categories",
+    "filters[0][value][0]": "protein",
     "filters[0][operator]": "in",
-    "limit": "1",
-    "cdc": "1m",
+    "filters[0][original]": "1",
+    "limit": "32",
+    "start": "0",
     "substore": "66505ff8c8f2d6e221b9180c"
   }
 }
